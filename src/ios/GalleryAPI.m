@@ -140,6 +140,7 @@
                                         @"data" : @"",
                                         @"thumbnail" : @"",
                                         @"error" : @"false",
+                                        @"mediaType" : obj.mediaType,
                                         @"type" : subtypes[@(collection.assetCollectionSubtype)]
                                         }];
             }];
