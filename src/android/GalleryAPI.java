@@ -37,7 +37,7 @@ public class GalleryAPI extends CordovaPlugin {
     public static final String ACTION_GET_MEDIA_THUMBNAIL = "getMediaThumbnail";
     public static final String ACTION_GET_HQ_IMAGE_DATA = "getHQImageData";
     public static final String ACTION_GET_ALBUMS = "getAlbums";
-    public static final String DIR_NAME = ".mendr";
+    public static final String DIR_NAME = "files";
     public static final String SUB_DIR_NAME = ".mendr_hq";
 
     private static final int BASE_SIZE = 300;
@@ -130,12 +130,15 @@ public class GalleryAPI extends CordovaPlugin {
             put("title", MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME);
         }};
 
-        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "1) GROUP BY 1,(2");
+        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "");
 
         Object collection = null;
         for (int i = 0; i < results.size(); i++) {
             collection = results.get(i);
-            if (collection.getString("title").equals("Camera")) {
+            Log.i("colle", collection.getString("title"));
+            String collectionTitle;
+            collectionTitle = collection.getString("title");
+            if (collectionTitle.equals("Camera")) {
                 results.remove(i);
                 break;
             }
@@ -153,9 +156,11 @@ public class GalleryAPI extends CordovaPlugin {
             put("data", MediaStore.MediaColumns.DATA);
             put("int.date_added", MediaStore.Images.ImageColumns.DATE_ADDED);
             put("title", MediaStore.Images.ImageColumns.DISPLAY_NAME);
+            put("filename", MediaStore.Images.ImageColumns.DISPLAY_NAME);
             put("int.height", MediaStore.Images.ImageColumns.HEIGHT);
             put("int.width", MediaStore.Images.ImageColumns.WIDTH);
             put("int.orientation", MediaStore.Images.ImageColumns.ORIENTATION);
+            put("duration", MediaStore.MediaColumns.DURATION);
             put("mime_type", MediaStore.Images.ImageColumns.MIME_TYPE);
             put("float.lat", MediaStore.Images.ImageColumns.LATITUDE);
             put("float.lon", MediaStore.Images.ImageColumns.LONGITUDE);
@@ -163,7 +168,7 @@ public class GalleryAPI extends CordovaPlugin {
             put("int.thumbnail_id", MediaStore.Images.ImageColumns.MINI_THUMB_MAGIC);
         }};
 
-        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "bucket_display_name = \"" + bucket + "\"");
+        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "bucket_display_name = '" + bucket + "'");
 
         ArrayOfObjects temp = new ArrayOfObjects();
 
@@ -282,7 +287,7 @@ public class GalleryAPI extends CordovaPlugin {
                 if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
                     ops.inSampleSize = 4;
                 } else if (sourceWidth * sourceHeight > 1000000) {
-                    ops.inSampleSize = 8;
+                    ops.inSampleSize = 4;
                 }
 
                 Bitmap originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
