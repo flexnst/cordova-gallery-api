@@ -127,7 +127,8 @@
             PHAssetCollection* collection = collections[0];
             [[PHAsset fetchAssetsInAssetCollection:collection
                                            options:nil] enumerateObjectsUsingBlock:^(PHAsset* obj, NSUInteger idx, BOOL* stop) {
-                if (obj.mediaType == PHAssetMediaTypeImage)
+                //if (obj.mediaType == PHAssetMediaTypeImage)
+                    NSLog(@"%@",obj);
                     [assets addObject:@{
                                         @"id" : obj.localIdentifier,
                                         @"title" : @"",
@@ -137,11 +138,13 @@
                                         @"width" : [NSNumber numberWithFloat:obj.pixelWidth],
                                         @"height" : [NSNumber numberWithFloat:obj.pixelHeight],
                                         @"size" : @0,
+                                        @"created" : [NSNumber numberWithDouble:obj.creationDate.timeIntervalSince1970],
+                                        @"duration" : [NSNumber numberWithDouble:obj.duration],
                                         @"data" : @"",
                                         @"thumbnail" : @"",
-                                        @"duration" : [NSNumber numberWithDouble:obj.duration],
                                         @"error" : @"false",
-                                        @"mediaType" : obj.mediaType,
+                                        @"extension" : [obj valueForKey:@"uniformTypeIdentifier"],
+                                        @"filename" : [obj valueForKey:@"filename"],
                                         @"type" : subtypes[@(collection.assetCollectionSubtype)]
                                         }];
             }];
@@ -282,6 +285,8 @@
                 canWriteFile = false;
             }
         }
+        
+        NSLog(@"MEdia file: %@", media);
 
         if (canWriteFile) {
             NSString* imageId = [media[@"id"] stringByReplacingOccurrencesOfString:@"/" withString:@"^"];
@@ -293,11 +298,24 @@
 
             PHFetchResult* assets = [PHAsset fetchAssetsWithLocalIdentifiers:@[ media[@"id"] ]
                                                                      options:nil];
+            PHContentEditingInputRequestOptions *editOptions = [[PHContentEditingInputRequestOptions alloc] init];
+
+            [assets[0] requestContentEditingInputWithOptions:editOptions completionHandler:^(PHContentEditingInput *contentEditingInput, NSDictionary *info) {
+
+                if (contentEditingInput.fullSizeImageURL) {
+                    NSLog(@"MEdia URL: %@", contentEditingInput.fullSizeImageURL);
+                    //do something with contentEditingInput.fullSizeImageURL
+                }
+
+            }];
+            
+            
             if (assets && assets.count > 0) {
                 [[PHImageManager defaultManager] requestImageDataForAsset:assets[0]
                                                                   options:options
                                                             resultHandler:^(NSData* _Nullable imageData, NSString* _Nullable dataUTI, UIImageOrientation orientation, NSDictionary* _Nullable info) {
                                                                 if (imageData) {
+                                                                    NSLog(@"MEdia URL: %@", imageData);
                                                                     //                                                                Processing Image Data if needed
                                                                     // Image must always be converted to JPEG to avoid reading HEIC files
                                                                     UIImage* image = [UIImage imageWithData:imageData];
