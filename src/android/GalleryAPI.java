@@ -135,10 +135,7 @@ public class GalleryAPI extends CordovaPlugin {
         Object collection = null;
         for (int i = 0; i < results.size(); i++) {
             collection = results.get(i);
-            Log.i("colle", collection.getString("title"));
-            String collectionTitle;
-            collectionTitle = collection.getString("title");
-            if (collectionTitle.equals("Camera")) {
+            if (collection.getString("title").equals("Camera")) {
                 results.remove(i);
                 break;
             }
@@ -154,6 +151,8 @@ public class GalleryAPI extends CordovaPlugin {
         Object columns = new Object() {{
             put("int.id", MediaStore.Images.Media._ID);
             put("data", MediaStore.MediaColumns.DATA);
+            //put("asdf", MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+            //put("externalurl", MediaStore.Images.Media.getContentUri(MediaStore.Images.ImageColumns.VOLUME_NAME));
             put("int.date_added", MediaStore.Images.ImageColumns.DATE_ADDED);
             put("title", MediaStore.Images.ImageColumns.DISPLAY_NAME);
             put("filename", MediaStore.Images.ImageColumns.DISPLAY_NAME);
