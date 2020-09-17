@@ -139,6 +139,7 @@
                                         @"size" : @0,
                                         @"data" : @"",
                                         @"thumbnail" : @"",
+                                        @"duration" : [NSNumber numberWithDouble:obj.duration],
                                         @"error" : @"false",
                                         @"mediaType" : obj.mediaType,
                                         @"type" : subtypes[@(collection.assetCollectionSubtype)]
