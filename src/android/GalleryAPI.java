@@ -285,7 +285,7 @@ public class GalleryAPI extends CordovaPlugin {
                 }
 
                 if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
-                    ops.inSampleSize = 4;
+                    ops.inSampleSize = 1;
                 } else if (sourceWidth * sourceHeight > 1000000) {
                     ops.inSampleSize = 4;
                 }
