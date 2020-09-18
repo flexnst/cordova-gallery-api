@@ -11,10 +11,12 @@ import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
+import android.media.ThumbnailUtils;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.util.Size;
 import android.widget.Toast;
 
 import org.apache.cordova.*;
@@ -25,6 +27,7 @@ import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,7 +41,7 @@ public class GalleryAPI extends CordovaPlugin {
     public static final String ACTION_GET_HQ_IMAGE_DATA = "getHQImageData";
     public static final String ACTION_GET_ALBUMS = "getAlbums";
     public static final String DIR_NAME = "files";
-    public static final String SUB_DIR_NAME = ".mendr_hq";
+    public static final String SUB_DIR_NAME = "mendr_hq";
 
     private static final int BASE_SIZE = 300;
 
@@ -125,12 +128,34 @@ public class GalleryAPI extends CordovaPlugin {
     }
 
     public ArrayOfObjects getBuckets() throws JSONException {
+
+        // Removing any existing files (TODO: make another function for this!)
+        File rootDir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
+        File dir = new File(rootDir, SUB_DIR_NAME);
+
+        //check if root directory exist
+        if (rootDir.exists()) {
+            //root directory exists
+            if (dir.exists()) {
+                //dir exists so deleting it
+                deleteRecursive(dir);
+            }
+        }
+
         Object columns = new Object() {{
             put("id", MediaStore.Images.ImageColumns.BUCKET_ID);
             put("title", MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME);
+            put("data", MediaStore.Images.ImageColumns.DATA);
+            put("duration", MediaStore.MediaColumns.DURATION);
+            put("int.height", MediaStore.Images.ImageColumns.HEIGHT);
+            put("int.width", MediaStore.Images.ImageColumns.WIDTH);
+            put("int.orientation", MediaStore.Images.ImageColumns.ORIENTATION);
         }};
 
         final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "");
+        // GROUP BY no longer supported, apparently
+
+        System.out.println("Album" + results);
 
         Object collection = null;
         for (int i = 0; i < results.size(); i++) {
@@ -148,12 +173,13 @@ public class GalleryAPI extends CordovaPlugin {
     }
 
     private ArrayOfObjects getMedia(String bucket) throws JSONException {
+
         Object columns = new Object() {{
             put("int.id", MediaStore.Images.Media._ID);
             put("data", MediaStore.MediaColumns.DATA);
             //put("asdf", MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             //put("externalurl", MediaStore.Images.Media.getContentUri(MediaStore.Images.ImageColumns.VOLUME_NAME));
-            put("int.date_added", MediaStore.Images.ImageColumns.DATE_ADDED);
+            put("int.created", MediaStore.Images.ImageColumns.DATE_ADDED);
             put("title", MediaStore.Images.ImageColumns.DISPLAY_NAME);
             put("filename", MediaStore.Images.ImageColumns.DISPLAY_NAME);
             put("int.height", MediaStore.Images.ImageColumns.HEIGHT);
@@ -168,17 +194,41 @@ public class GalleryAPI extends CordovaPlugin {
         }};
 
         final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "bucket_display_name = '" + bucket + "'");
+        final ArrayOfObjects resultsVideo = queryContentProvider(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, columns, "bucket_display_name = '" + bucket + "'");
 
         ArrayOfObjects temp = new ArrayOfObjects();
-
+        //Uri uriExternal = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 
         for (Object media : results) {
+
+            System.out.println("Image Object" + media);
+
+            //media.put("data", Uri.withAppendedPath(uriExternal, "" + media.getLong("id")));
             media.put("thumbnail", "");
             media.put("error", "false");
+            media.put("isVideo", false);
 
             if (media.getInt("height") <= 0 || media.getInt("width") <= 0) {
                 System.err.println(media);
             } else {
+                temp.add(media);
+            }
+        }
+
+        for (Object media : resultsVideo) {
+
+            //System.out.println("Video Object" + media);
+
+
+            //media.put("data", Uri.withAppendedPath(uriExternal, "" + media.getLong("id")));
+            media.put("thumbnail", "");
+            media.put("error", "false");
+            media.put("isVideo", true);
+
+            if (media.getInt("height") <= 0 || media.getInt("width") <= 0) {
+                System.err.println(media);
+            } else {
+                System.out.println("ADDING VIDEO!");
                 temp.add(media);
             }
         }
@@ -268,6 +318,8 @@ public class GalleryAPI extends CordovaPlugin {
             media.put("error", "true");
 
             File image = new File(media.getString("data"));
+            Boolean isVideo = media.getBoolean("isVideo");
+            //System.out.println("Is Video? " + isVideo);
 
             int sourceWidth = media.getInt("width");
             int sourceHeight = media.getInt("height");
@@ -283,13 +335,19 @@ public class GalleryAPI extends CordovaPlugin {
                     destinationHeight = (int) Math.ceil(destinationWidth * ((double) sourceHeight / sourceWidth));
                 }
 
-                if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
-                    ops.inSampleSize = 1;
-                } else if (sourceWidth * sourceHeight > 1000000) {
-                    ops.inSampleSize = 4;
-                }
+                Bitmap originalImageBitmap;
 
-                Bitmap originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
+                if(isVideo){
+                    //Size thumbSize = new Size(400, 400);
+                    originalImageBitmap = ThumbnailUtils.createVideoThumbnail(image.getAbsolutePath(), 1);
+                }else{
+                    if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
+                        ops.inSampleSize = 1;
+                    } else if (sourceWidth * sourceHeight > 1000000) {
+                        ops.inSampleSize = 4;
+                    }
+                    originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
+                }
 
                 if (originalImageBitmap == null) {
                     ops.inSampleSize = 1;
@@ -342,44 +400,75 @@ public class GalleryAPI extends CordovaPlugin {
     }
 
     private File getHQImageData(JSONObject media) throws JSONException {
-        File imagePath = imagePathFromMediaId(media.getString("id"));
 
-        BitmapFactory.Options ops = new BitmapFactory.Options();
-        ops.inJustDecodeBounds = false;
-        ops.inSampleSize = 1;
+        File imagePath = imagePathFromMediaId(media.getString("savefilename"));
+        Boolean isVideo = media.getBoolean("isVideo");
+        System.out.println("isVideo: " + isVideo + "  media: " + media);
 
-        File image = new File(media.getString("data"));
+        if(isVideo){
 
-        int sourceWidth = media.getInt("width");
-        int sourceHeight = media.getInt("height");
+            String destPath = videoPathFromMediaId(media.getString("savefilename"));
 
-        if (sourceHeight > 0 && sourceWidth > 0) {
-            Bitmap originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
+            try {
+                FileOutputStream newFile = new FileOutputStream (destPath, false);
+                FileInputStream oldFile = new FileInputStream (media.getString("data"));
 
-            if (originalImageBitmap != null) {
-                int orientation = media.getInt("orientation");
-                if (orientation > 0)
-                    originalImageBitmap = rotate(originalImageBitmap, orientation);
-
-                byte[] imageData = getBytesFromBitmap(originalImageBitmap);
-                originalImageBitmap.recycle();
-                if (imageData != null) {
-                    FileOutputStream outStream;
-                    try {
-                        outStream = new FileOutputStream(imagePath);
-                        outStream.write(imageData);
-                        outStream.close();
-                    } catch (IOException e) {
-                        Log.e("Mendr", "Couldn't write the image data");
-                        e.printStackTrace();
-                    }
+                // Transfer bytes from in to out
+                byte[] buf = new byte[1024];
+                int len;
+                while ((len = oldFile.read(buf)) > 0) {
+                    newFile.write(buf, 0, len);
                 }
+                newFile.close();
+                oldFile.close();
+                System.out.println("FileSaved?:");
+
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+        }else{
+
+            BitmapFactory.Options ops = new BitmapFactory.Options();
+            ops.inJustDecodeBounds = false;
+            ops.inSampleSize = 1;
+
+            File image = new File(media.getString("data"));
+
+            int sourceWidth = media.getInt("width");
+            int sourceHeight = media.getInt("height");
+
+            if (sourceHeight > 0 && sourceWidth > 0) {
+                Bitmap originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
+
+                if (originalImageBitmap != null) {
+                    int orientation = media.getInt("orientation");
+                    if (orientation > 0)
+                        originalImageBitmap = rotate(originalImageBitmap, orientation);
+
+                    byte[] imageData = getBytesFromBitmap(originalImageBitmap);
+                    originalImageBitmap.recycle();
+                    if (imageData != null) {
+                        FileOutputStream outStream;
+                        try {
+                            outStream = new FileOutputStream(imagePath);
+                            outStream.write(imageData);
+                            outStream.close();
+
+                        } catch (IOException e) {
+                            Log.e("Mendr", "Couldn't write the image data");
+                            e.printStackTrace();
+                        }
+                    }
+                } else
+                    Log.e("Mendr", "Couldn't decode the original image");
             } else
-                Log.e("Mendr", "Couldn't decode the original image");
-        } else
-            Log.e("Mendr", "Invalid Media!!! Image width or height is 0");
+                Log.e("Mendr", "Invalid Media!!! Image width or height is 0");
+        }
 
         return imagePath;
+
     }
 
     private byte[] getBytesFromBitmap(Bitmap bitmap) {
@@ -411,7 +500,7 @@ public class GalleryAPI extends CordovaPlugin {
         return thumbnailPath;
     }
 
-    private File imagePathFromMediaId(String mediaId) {
+    private File imagePathFromMediaId(String mediaFileName) {
         File imagePath = null;
 
         File rootDir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
@@ -422,15 +511,16 @@ public class GalleryAPI extends CordovaPlugin {
             //root directory exists
             if (dir.exists()) {
                 //dir exists so deleting it
-                deleteRecursive(dir);
+                //deleteRecursive(dir);
+            }else{
+                if (!dir.mkdirs()) {
+                    Log.e("Mendr", "Failed to create hq storage directory.");
+                    return imagePath;
+                } else {
+                    //dir created successfully
+                }
             }
 
-            if (!dir.mkdirs()) {
-                Log.e("Mendr", "Failed to create hq storage directory.");
-                return imagePath;
-            } else {
-                //dir created successfully
-            }
         } else {
             //root directory doesn't exist
             //trying to create root directory
@@ -448,8 +538,53 @@ public class GalleryAPI extends CordovaPlugin {
             }
         }
 
-        String imageName = mediaId + ".png";
-        imagePath = new File(dir.getPath() + File.separator + imageName);
+        //String imageName = mediaId + ".png";
+        imagePath = new File(dir.getPath() + File.separator + mediaFileName);
+
+        return imagePath;
+    }
+
+    private String videoPathFromMediaId(String mediaFileName) {
+        String imagePath = null;
+
+        File rootDir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
+        File dir = new File(rootDir, SUB_DIR_NAME);
+
+        //check if root directory exist
+        if (rootDir.exists()) {
+            //root directory exists
+            if (dir.exists()) {
+                //dir exists so deleting it
+                //deleteRecursive(dir);
+                Log.e("Mendr", "Directory Exists!");
+            }else{
+                if (!dir.mkdirs()) {
+                    Log.e("Mendr", "Failed to create hq storage directory.");
+                    return imagePath;
+                } else {
+                    //dir created successfully
+                }
+            }
+
+        } else {
+            //root directory doesn't exist
+            //trying to create root directory
+            if (!rootDir.mkdirs()) {
+                Log.e("Mendr", "Failed to create root storage directory.");
+                return imagePath;
+            } else {
+                //root dir created successfully
+                if (!dir.mkdirs()) {
+                    Log.e("Mendr", "Failed to create SECOND hq storage directory.");
+                    return imagePath;
+                } else {
+                    //dir created successfully
+                }
+            }
+        }
+
+        //String imageName = mediaId + ".png";
+        imagePath = dir.getPath() + File.separator + mediaFileName;
 
         return imagePath;
     }
