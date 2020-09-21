@@ -74,26 +74,40 @@
                                          ];
 
             for (NSDictionary* collectionType in collectionTypes) {
+                
+                
                 [[PHAssetCollection fetchAssetCollectionsWithType:[collectionType[@"type"] integerValue] subtype:PHAssetCollectionSubtypeAny options:nil] enumerateObjectsUsingBlock:^(PHAssetCollection* collection, NSUInteger idx, BOOL* stop) {
-                    if (collection != nil && collection.localizedTitle != nil && collection.localIdentifier != nil && ([subtypes.allKeys indexOfObject:@(collection.assetCollectionSubtype)] != NSNotFound)) {
+                                        
+                    if (collection != nil && collection.localizedTitle != nil && collection.localIdentifier != nil &&
+                        ([subtypes.allKeys indexOfObject:@(collection.assetCollectionSubtype)] != NSNotFound)) {
+                        
                         PHFetchResult* result = [PHAsset fetchAssetsInAssetCollection:collection
                                                                               options:nil];
+                        
+//                        PHAsset *firstAsset = [result firstObject];
+//                        NSLog(@"%@",firstAsset);
+                        
+                        // skip empty ablums
                         if (result.count > 0) {
+                            
                             if ([collection.localizedTitle isEqualToString:@"Camera Roll"] && collection.assetCollectionType == PHAssetCollectionTypeSmartAlbum) {
-                                cameraRoll = @{
-                                               @"id" : collection.localIdentifier,
-                                               @"title" : collection.localizedTitle,
-                                               @"type" : subtypes[@(collection.assetCollectionSubtype)],
-                                               @"assets" : [NSString stringWithFormat:@"%ld", (long)collection.estimatedAssetCount]
-                                               };
+                                    cameraRoll = @{
+                                       @"id" : collection.localIdentifier,
+                                       @"title" : collection.localizedTitle,
+                                       @"type" : subtypes[@(collection.assetCollectionSubtype)],
+                                       @"origType" : [collection valueForKey:@"assetCollectionSubtype"],
+                                       @"assetsCount" : [NSString stringWithFormat:@"%d", (int)result.count],
+                                    };
                             }
                             else {
+                                
                                 [albums addObject:@{
-                                                    @"id" : collection.localIdentifier,
-                                                    @"title" : collection.localizedTitle,
-                                                    @"type" : subtypes[@(collection.assetCollectionSubtype)],
-                                                    @"assets" : [NSString stringWithFormat:@"%ld", (long)collection.estimatedAssetCount]
-                                                    }];
+                                    @"id" : collection.localIdentifier,
+                                    @"title" : collection.localizedTitle,
+                                    @"type" : subtypes[@(collection.assetCollectionSubtype)],
+                                    @"origType" : [collection valueForKey:@"assetCollectionSubtype"],
+                                    @"assetsCount" : [NSString stringWithFormat:@"%d", (int)result.count]
+                                }];
                             }
                         }
                     }
