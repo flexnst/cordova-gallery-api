@@ -60,7 +60,7 @@ GalleryAPI.prototype.clearHQStorage = function(options, successCallback, errorCa
         successCallback,
         errorCallback,
         'GalleryAPI',
-        'clearStorage',
+        'clearHQStorage',
         [options]
     );
 };
