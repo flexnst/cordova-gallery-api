@@ -55,4 +55,14 @@ GalleryAPI.prototype.getHQImageData = function(media, successCallback, errorCall
     );
 };
 
+GalleryAPI.prototype.clearStorage = function(options, successCallback, errorCallback) {
+    cordova.exec(
+        successCallback,
+        errorCallback,
+        'GalleryAPI',
+        'clearStorage',
+        [options]
+    );
+};
+
 module.exports = new GalleryAPI();
