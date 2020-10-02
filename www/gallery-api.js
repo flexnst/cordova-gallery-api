@@ -55,7 +55,7 @@ GalleryAPI.prototype.getHQImageData = function(media, successCallback, errorCall
     );
 };
 
-GalleryAPI.prototype.clearStorage = function(options, successCallback, errorCallback) {
+GalleryAPI.prototype.clearHQStorage = function(options, successCallback, errorCallback) {
     cordova.exec(
         successCallback,
         errorCallback,
