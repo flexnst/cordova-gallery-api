@@ -40,6 +40,7 @@ public class GalleryAPI extends CordovaPlugin {
     public static final String ACTION_GET_MEDIA_THUMBNAIL = "getMediaThumbnail";
     public static final String ACTION_GET_HQ_IMAGE_DATA = "getHQImageData";
     public static final String ACTION_GET_ALBUMS = "getAlbums";
+    public static final String ACTION_GET_CLEAR_HQ_STORAGE = "clearHQStorage";
     public static final String DIR_NAME = "files";
     public static final String SUB_DIR_NAME = "mendr_hq";
 
@@ -94,8 +95,8 @@ public class GalleryAPI extends CordovaPlugin {
                 cordova.getThreadPool().execute(new Runnable() {
                     public void run() {
                         try {
-                            File imagePath = getHQImageData((JSONObject) args.get(0));
-                            callbackContext.success(imagePath.toString());
+                            JSONObject media = getHQImageData((JSONObject) args.get(0));
+                            callbackContext.success(media);
                         } catch (Exception e) {
                             e.printStackTrace();
                             callbackContext.error(e.getMessage());
@@ -117,6 +118,21 @@ public class GalleryAPI extends CordovaPlugin {
                 });
 
                 return true;
+
+            } else if (ACTION_GET_CLEAR_HQ_STORAGE.equals(action)) {
+                cordova.getThreadPool().execute(new Runnable() {
+                    public void run() {
+                        try {
+                            String response = clearHQStorage();
+                            callbackContext.success(new String(response));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            callbackContext.error(e.getMessage());
+                        }
+                    }
+                });
+
+                return true;
             }
             callbackContext.error("Invalid action");
             return false;
@@ -128,19 +144,6 @@ public class GalleryAPI extends CordovaPlugin {
     }
 
     public ArrayOfObjects getBuckets() throws JSONException {
-
-        // Removing any existing files (TODO: make another function for this!)
-        File rootDir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
-        File dir = new File(rootDir, SUB_DIR_NAME);
-
-        //check if root directory exist
-        if (rootDir.exists()) {
-            //root directory exists
-            if (dir.exists()) {
-                //dir exists so deleting it
-                deleteRecursive(dir);
-            }
-        }
 
         Object columns = new Object() {{
             put("id", MediaStore.Images.ImageColumns.BUCKET_ID);
@@ -204,6 +207,8 @@ public class GalleryAPI extends CordovaPlugin {
             System.out.println("Image Object" + media);
 
             //media.put("data", Uri.withAppendedPath(uriExternal, "" + media.getLong("id")));
+            media.put("hqpath", "");
+            media.put("thumbs", "");
             media.put("thumbnail", "");
             media.put("error", "false");
             media.put("isVideo", false);
@@ -399,15 +404,18 @@ public class GalleryAPI extends CordovaPlugin {
         return media;
     }
 
-    private File getHQImageData(JSONObject media) throws JSONException {
+    private JSONObject getHQImageData(JSONObject media) throws JSONException {
 
         File imagePath = imagePathFromMediaId(media.getString("savefilename"));
         Boolean isVideo = media.getBoolean("isVideo");
         System.out.println("isVideo: " + isVideo + "  media: " + media);
+        media.put("hqpath", imagePath.toString());
+        System.out.println("MEDIA PATH: " + imagePath.toString());
 
         if(isVideo){
 
             String destPath = videoPathFromMediaId(media.getString("savefilename"));
+            media.put("hqpath", imagePath.toString());
 
             try {
                 FileOutputStream newFile = new FileOutputStream (destPath, false);
@@ -422,6 +430,12 @@ public class GalleryAPI extends CordovaPlugin {
                 newFile.close();
                 oldFile.close();
                 System.out.println("FileSaved?:");
+
+                // create video thumbnails
+                //ArrayOfObjects thumbs;
+
+
+
 
             } catch (IOException e) {
                 // TODO Auto-generated catch block
@@ -467,7 +481,33 @@ public class GalleryAPI extends CordovaPlugin {
                 Log.e("Mendr", "Invalid Media!!! Image width or height is 0");
         }
 
-        return imagePath;
+        return media;
+
+    }
+
+    private String clearHQStorage() throws JSONException {
+
+        String response = null;
+
+        // Removing any existing files
+        File rootDir = new File(this.getContext().getApplicationInfo().dataDir, DIR_NAME);
+        File dir = new File(rootDir, SUB_DIR_NAME);
+
+        //check if root directory exist
+        if (rootDir.exists()) {
+            //root directory exists
+            if (dir.exists()) {
+                //dir exists so deleting it
+                deleteRecursive(dir);
+                response = "Directory deleted.";
+            }else{
+                response = "Directory does not exist.";
+            }
+        }else{
+            response = "Directory does not exist.";
+        }
+
+        return response;
 
     }
 
