@@ -545,6 +545,31 @@
     }];
 }
 
+- (void)clearHQStorage:(CDVInvokedUrlCommand*)command
+{
+    [self.commandDelegate runInBackground:^{
+        
+        NSString* docsPath = [[NSTemporaryDirectory() stringByStandardizingPath] stringByAppendingPathComponent:kDirectoryName];
+        NSString* resultMsg;;
+        NSError* error;
+        
+        NSFileManager* fileMgr = [NSFileManager new];
+        
+        if ([fileMgr fileExistsAtPath:docsPath]) {
+            if (![fileMgr removeItemAtPath:docsPath error:&error]){
+                NSLog(@"Delete directory error: %@", error);
+                resultMsg = @"Directory removed.";
+            }else{
+                resultMsg = @"Directory not removed.";
+            }
+        }
+        
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:resultMsg];
+        
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }];
+}
+
 + (NSDictionary*)subtypes
 {
     NSDictionary* subtypes = @{ @(PHAssetCollectionSubtypeAlbumRegular) : @"PHAssetCollectionSubtypeAlbumRegular",
