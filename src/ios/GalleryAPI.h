@@ -13,4 +13,6 @@
 
 - (void) getHQImageData:(CDVInvokedUrlCommand*)command;
 
+- (void) clearHQStorage:(CDVInvokedUrlCommand*)command;
+
 @end
