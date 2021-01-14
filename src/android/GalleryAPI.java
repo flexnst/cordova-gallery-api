@@ -148,29 +148,35 @@ public class GalleryAPI extends CordovaPlugin {
         Object columns = new Object() {{
             put("id", MediaStore.Images.ImageColumns.BUCKET_ID);
             put("title", MediaStore.Images.ImageColumns.BUCKET_DISPLAY_NAME);
-            put("data", MediaStore.Images.ImageColumns.DATA);
-            put("duration", MediaStore.MediaColumns.DURATION);
-            put("int.height", MediaStore.Images.ImageColumns.HEIGHT);
-            put("int.width", MediaStore.Images.ImageColumns.WIDTH);
-            put("int.orientation", MediaStore.Images.ImageColumns.ORIENTATION);
         }};
 
-        final ArrayOfObjects results = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "");
+        ArrayOfObjects albums = new ArrayOfObjects();
+        final ArrayOfObjects imageResults = queryContentProvider(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, columns, "");
+        final ArrayOfObjects videoResults = queryContentProvider(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, columns, "");
         // GROUP BY no longer supported, apparently
 
-        System.out.println("Album" + results);
+        albums.addAll(imageResults);
+        albums.addAll(videoResults);
 
-        Object collection = null;
-        for (int i = 0; i < results.size(); i++) {
-            collection = results.get(i);
-            if (collection.getString("title").equals("Camera")) {
-                results.remove(i);
-                break;
+        // instead GROUP BY
+        albums = this.getUniqueItemsBy(albums, "title");
+
+        System.out.println("Album" + albums);
+
+        return albums;
+    }
+
+    private ArrayOfObjects getUniqueItemsBy(ArrayOfObjects items, String column) throws JSONException {
+        ArrayOfObjects results = new ArrayOfObjects();
+        ArrayOfStrings names = new ArrayOfStrings();
+
+        for (int i = 0; i < items.size(); i++) {
+            Object item = items.get(i);
+            if (!names.contains(item.getString(column))) {
+                names.add(item.getString(column));
+                results.add(item);
             }
         }
-
-        if (collection != null)
-            results.add(0, collection);
 
         return results;
     }
@@ -692,6 +698,10 @@ public class GalleryAPI extends CordovaPlugin {
     }
 
     private class ArrayOfObjects extends ArrayList<Object> {
+
+    }
+
+    private class ArrayOfStrings extends ArrayList<String> {
 
     }
 }
