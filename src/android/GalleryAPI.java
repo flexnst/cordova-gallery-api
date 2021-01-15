@@ -59,8 +59,7 @@ public class GalleryAPI extends CordovaPlugin {
                 cordova.getThreadPool().execute(new Runnable() {
                     public void run() {
                         try {
-                            JSONObject object = (JSONObject) args.get(0);
-                            ArrayOfObjects albums = getMedia(object.getString("title"));
+                            ArrayOfObjects albums = getMedia((String) args.get(0));
                             callbackContext.success(new JSONArray(albums));
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -186,8 +185,6 @@ public class GalleryAPI extends CordovaPlugin {
         Object columns = new Object() {{
             put("int.id", MediaStore.Images.Media._ID);
             put("data", MediaStore.MediaColumns.DATA);
-            //put("asdf", MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            //put("externalurl", MediaStore.Images.Media.getContentUri(MediaStore.Images.ImageColumns.VOLUME_NAME));
             put("int.created", MediaStore.Images.ImageColumns.DATE_ADDED);
             put("title", MediaStore.Images.ImageColumns.DISPLAY_NAME);
             put("filename", MediaStore.Images.ImageColumns.DISPLAY_NAME);
