@@ -35,13 +35,13 @@ GalleryAPI.prototype.getMedia = function(albumName, successCallback, errorCallba
     );
 };
 
-GalleryAPI.prototype.getMediaThumbnail = function(media, successCallback, errorCallback) {
+GalleryAPI.prototype.getMediaThumbnail = function(media, width, height, successCallback, errorCallback) {
     cordova.exec(
         successCallback,
         errorCallback,
         'GalleryAPI',
         'getMediaThumbnail',
-        [media]
+        [media, width, height]
     );
 };
 

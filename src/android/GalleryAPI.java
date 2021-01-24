@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Build;
+import android.os.CancellationSignal;
 import android.provider.MediaStore;
 import android.media.ThumbnailUtils;
 import android.support.annotation.NonNull;
@@ -81,7 +82,7 @@ public class GalleryAPI extends CordovaPlugin {
                 cordova.getThreadPool().execute(new Runnable() {
                     public void run() {
                         try {
-                            JSONObject media = getMediaThumbnail((JSONObject) args.get(0));
+                            JSONObject media = getMediaThumbnail((JSONObject) args.get(0), (int) args.get(1), (int) args.get(2));
                             callbackContext.success(media);
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -311,71 +312,57 @@ public class GalleryAPI extends CordovaPlugin {
         }
     }
 
-    private JSONObject getMediaThumbnail(JSONObject media) throws JSONException {
+    private JSONObject getMediaThumbnail(JSONObject media, int destWidth, int destHeight) throws JSONException, IOException {
 
         File thumbnailPath = thumbnailPathFromMediaId(media.getString("id"));
         if (thumbnailPath.exists()) {
-            System.out.println("Thumbnail Already Exists!!!. Not Creating New One");
+            System.out.println("Thumbnail Already Exists.");
             media.put("thumbnail", thumbnailPath);
         } else {
-            if (ops == null) {
-                ops = new BitmapFactory.Options();
-                ops.inJustDecodeBounds = false;
-                ops.inSampleSize = 1;
-            }
             media.put("error", "true");
 
-            File image = new File(media.getString("data"));
-            Boolean isVideo = media.getBoolean("isVideo");
-            //System.out.println("Is Video? " + isVideo);
+            File mediaFile = new File(media.getString("data"));
 
             int sourceWidth = media.getInt("width");
             int sourceHeight = media.getInt("height");
 
             if (sourceHeight > 0 && sourceWidth > 0) {
-                int destinationWidth, destinationHeight;
-
-                if (sourceWidth > sourceHeight) {
-                    destinationHeight = BASE_SIZE;
-                    destinationWidth = (int) Math.ceil(destinationHeight * ((double) sourceWidth / sourceHeight));
-                } else {
-                    destinationWidth = BASE_SIZE;
-                    destinationHeight = (int) Math.ceil(destinationWidth * ((double) sourceHeight / sourceWidth));
-                }
-
                 Bitmap originalImageBitmap;
 
-                if(isVideo){
-                    //Size thumbSize = new Size(400, 400);
-                    originalImageBitmap = ThumbnailUtils.createVideoThumbnail(image.getAbsolutePath(), 1);
-                }else{
-                    if (sourceWidth * sourceHeight > 600000 && sourceWidth * sourceHeight < 1000000) {
-                        ops.inSampleSize = 1;
-                    } else if (sourceWidth * sourceHeight > 1000000) {
+                if (ops == null) {
+                    ops = new BitmapFactory.Options();
+                    // Allocate memory for load image
+                    ops.inJustDecodeBounds = false;
+                    // Thumbnail as 1/1
+                    ops.inSampleSize = 1;
+                }
+
+                if(media.getBoolean("isVideo")) {
+                    Size thumbSize = new Size(destWidth, destHeight);
+                    originalImageBitmap = ThumbnailUtils.createVideoThumbnail(mediaFile, thumbSize, null);
+                } else {
+                    if (sourceWidth * sourceHeight > 1000000) {
                         ops.inSampleSize = 4;
                     }
-                    originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops); //creating bitmap of original image
+                    originalImageBitmap = BitmapFactory.decodeFile(mediaFile.getAbsolutePath(), ops); //creating bitmap of original image
                 }
 
                 if (originalImageBitmap == null) {
                     ops.inSampleSize = 1;
-                    originalImageBitmap = BitmapFactory.decodeFile(image.getAbsolutePath(), ops);
+                    originalImageBitmap = BitmapFactory.decodeFile(mediaFile.getAbsolutePath(), ops);
                 }
 
                 if (originalImageBitmap != null) {
-
-                    if (destinationHeight <= 0 || destinationWidth <= 0) {
-                        System.out.println("destinationHeight: " + destinationHeight + "  destinationWidth: " + destinationWidth);
+                    int orientation = media.getInt("orientation");
+                    // Rotate before crop!
+                    if (orientation > 0) {
+                        originalImageBitmap = rotate(originalImageBitmap, orientation);
                     }
 
-                    Bitmap thumbnailBitmap = Bitmap.createScaledBitmap(originalImageBitmap, destinationWidth, destinationHeight, true);
+                    Bitmap thumbnailBitmap = ThumbnailUtils.extractThumbnail(originalImageBitmap, destWidth, destHeight);
                     originalImageBitmap.recycle();
 
                     if (thumbnailBitmap != null) {
-                        int orientation = media.getInt("orientation");
-                        if (orientation > 0)
-                            thumbnailBitmap = rotate(thumbnailBitmap, orientation);
-
                         byte[] thumbnailData = getBytesFromBitmap(thumbnailBitmap);
                         thumbnailBitmap.recycle();
                         if (thumbnailData != null) {
@@ -390,7 +377,7 @@ public class GalleryAPI extends CordovaPlugin {
                             }
 
                             if (thumbnailPath.exists()) {
-                                System.out.println("Thumbnail didn't Exists!!!. Created New One");
+                                System.out.println("Thumbnail didn't Exists. Created new.");
                                 media.put("thumbnail", thumbnailPath);
                                 media.put("error", "false");
                             }
